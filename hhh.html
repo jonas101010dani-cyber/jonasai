@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JONAS AI — 2026 Uplink</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root { --cyan: #00d4ff; --bg: #010a12; --border: rgba(0, 212, 255, 0.3); }
+        body { background: var(--bg); color: #c8f0ff; font-family: 'Share Tech Mono', monospace; height: 100vh; display: flex; flex-direction: column; margin: 0; overflow: hidden; }
+        header { padding: 15px 25px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: rgba(1, 10, 18, 0.9); }
+        #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; background: radial-gradient(circle at center, #021526 0%, #010a12 100%); }
+        .msg { max-width: 80%; padding: 12px 16px; border-radius: 8px; line-height: 1.5; font-size: 14px; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .user { align-self: flex-end; background: rgba(0, 212, 255, 0.1); border: 1px solid var(--cyan); }
+        .ai { align-self: flex-start; background: rgba(255, 255, 255, 0.05); border: 1px solid #3a7a9a; }
+        .input-area { padding: 20px; background: #000d16; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+        input { flex: 1; background: rgba(0, 212, 255, 0.05); border: 1px solid var(--border); color: white; padding: 12px; border-radius: 4px; outline: none; }
+        button { background: transparent; border: 1px solid var(--cyan); color: var(--cyan); padding: 10px 18px; cursor: pointer; border-radius: 4px; font-family: 'Orbitron'; }
+        .mic-active { background: #ff3c3c !important; color: white !important; border-color: #ff3c3c !important; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div style="font-family: 'Orbitron'; color: var(--cyan); letter-spacing: 2px;">JONAS <span style="font-size: 10px;">G3-CORE</span></div>
+    <div id="status" style="font-size: 11px; color: #3a7a9a;">SYSTEM READY</div>
+</header>
+
+<div id="chat-box"></div>
+
+<div class="input-area">
+    <button id="mic-btn">VOICE</button>
+    <input type="text" id="user-input" placeholder="Initiate query..." autocomplete="off">
+    <button id="send-btn">SEND</button>
+</div>
+
+<script>
+    const API_KEY = "AIzaSyDnE8KM6R6i3I-P7C-R1BjlacMUk99Zn7w";
+    
+    // UPDATED FOR 2026: Use v1beta for newest models or v1 for stable
+    const MODEL = "gemini-3-flash-preview"; 
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+
+    const chatBox = document.getElementById('chat-box');
+    const userInput = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+    const micBtn = document.getElementById('mic-btn');
+    const status = document.getElementById('status');
+
+    // --- 🎙️ VOICE: LISTENING ---
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        micBtn.onclick = () => {
+            recognition.start();
+            micBtn.classList.add('mic-active');
+        };
+        recognition.onresult = (e) => { userInput.value = e.results[0][0].transcript; handleCommunication(); };
+        recognition.onend = () => micBtn.classList.remove('mic-active');
+    }
+
+    // --- 🔊 VOICE: TALKING ---
+    function speak(text) {
+        window.speechSynthesis.cancel();
+        const msg = new SpeechSynthesisUtterance(text.replace(/[*#`]/g, ''));
+        msg.rate = 1.0;
+        window.speechSynthesis.speak(msg);
+    }
+
+    function addMessage(role, text) {
+        const div = document.createElement('div');
+        div.className = `msg ${role}`;
+        div.innerText = text;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        if (role === 'ai') speak(text);
+    }
+
+    // --- 🧠 CORE BRAIN ---
+    async function handleCommunication() {
+        const text = userInput.value.trim();
+        if (!text) return;
+
+        addMessage('user', text);
+        userInput.value = '';
+        status.innerText = "THINKING...";
+
+        try {
+            const response = await fetch(`${API_URL}?key=${API_KEY}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: `You are JONAS, a witty AI. User says: ${text}` }] }]
+                })
+            });
+
+            const data = await response.json();
+            
+            if (data.error) {
+                // If Gemini 3 isn't active on your key yet, try the latest 2.0 version
+                addMessage('ai', `UPLINK ERROR: ${data.error.message}. Checking backup protocols...`);
+                console.error(data.error);
+            } else if (data.candidates) {
+                addMessage('ai', data.candidates[0].content.parts[0].text);
+            }
+        } catch (error) {
+            addMessage('ai', "CRITICAL ERROR: Neural link offline.");
+        } finally {
+            status.innerText = "SYSTEM READY";
+        }
+    }
+
+    sendBtn.onclick = handleCommunication;
+    userInput.onkeydown = (e) => { if (e.key === 'Enter') handleCommunication(); };
+    window.onload = () => addMessage('ai', "System online. Gemini 3 core detected. How can JONAS help you?");
+</script>
+</body>
+</html>
