@@ -36,10 +36,15 @@
 </div>
 
 <script>
-    const API_KEY = "AIzaSyDnE8KM6R6i3I-P7C-R1BjlacMUk99Zn7w";
+    /**
+     * SECURITY NOTE: 
+     * We don't hard-code the API Key here. 
+     * Locally, it can be injected via a .env file (if using a server).
+     * On GitHub, use GitHub Actions to replace this placeholder.
+     */
+    const API_KEY = window.env?.API_KEY || ""; 
     
-    // UPDATED FOR 2026: Use v1beta for newest models or v1 for stable
-    const MODEL = "gemini-3-flash-preview"; 
+    const MODEL = "gemini-1.5-flash"; // Stable version for 2026
     const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
     const chatBox = document.getElementById('chat-box');
@@ -56,7 +61,10 @@
             recognition.start();
             micBtn.classList.add('mic-active');
         };
-        recognition.onresult = (e) => { userInput.value = e.results[0][0].transcript; handleCommunication(); };
+        recognition.onresult = (e) => { 
+            userInput.value = e.results[0][0].transcript; 
+            handleCommunication(); 
+        };
         recognition.onend = () => micBtn.classList.remove('mic-active');
     }
 
@@ -82,6 +90,12 @@
         const text = userInput.value.trim();
         if (!text) return;
 
+        // Check for missing API Key
+        if (!API_KEY) {
+            addMessage('ai', "SYSTEM ERROR: API Key missing. Please configure GitHub Secrets.");
+            return;
+        }
+
         addMessage('user', text);
         userInput.value = '';
         status.innerText = "THINKING...";
@@ -91,21 +105,21 @@
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: `You are JONAS, a witty AI. User says: ${text}` }] }]
+                    contents: [{ parts: [{ text: `You are JONAS, a witty AI assistant created by NexaSoftSolution. User says: ${text}` }] }]
                 })
             });
 
             const data = await response.json();
             
             if (data.error) {
-                // If Gemini 3 isn't active on your key yet, try the latest 2.0 version
-                addMessage('ai', `UPLINK ERROR: ${data.error.message}. Checking backup protocols...`);
+                addMessage('ai', `UPLINK ERROR: ${data.error.message}`);
                 console.error(data.error);
             } else if (data.candidates) {
                 addMessage('ai', data.candidates[0].content.parts[0].text);
             }
         } catch (error) {
             addMessage('ai', "CRITICAL ERROR: Neural link offline.");
+            console.error(error);
         } finally {
             status.innerText = "SYSTEM READY";
         }
@@ -113,7 +127,7 @@
 
     sendBtn.onclick = handleCommunication;
     userInput.onkeydown = (e) => { if (e.key === 'Enter') handleCommunication(); };
-    window.onload = () => addMessage('ai', "System online. Gemini 3 core detected. How can JONAS help you?");
+    window.onload = () => addMessage('ai', "System online. G3-Core active. How can JONAS help NEXAsoftsolution today?");
 </script>
 </body>
 </html>
